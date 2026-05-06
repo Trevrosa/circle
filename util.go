@@ -1,0 +1,124 @@
+package main
+
+import (
+	"image/color"
+	"math"
+
+	"github.com/hajimehoshi/ebiten/v2"
+	"github.com/hajimehoshi/ebiten/v2/text/v2"
+	"github.com/hajimehoshi/ebiten/v2/vector"
+)
+
+func FillRoundedRect(dst *ebiten.Image, x, y, width, height, radius float32) {
+	path := &vector.Path{}
+
+	// top left
+	path.MoveTo(x+radius, y)
+	// top edge
+	path.LineTo(x+width-radius, y)
+	// top right
+	path.QuadTo(x+width, y, x+width, y+radius)
+	// right edge
+	path.LineTo(x+width, y+height-radius)
+	// bottom right
+	path.QuadTo(x+width, y+height, x+width-radius, y+height)
+	// bottom edge
+	path.LineTo(x+radius, y+height)
+	// bottom left
+	path.QuadTo(x, y+height, x, y+height-radius)
+	// left edge
+	path.LineTo(x, y+radius)
+	// top left
+	path.QuadTo(x, y, x+radius, y)
+
+	// light grey fill
+	fillOptions := vector.DrawPathOptions{
+		AntiAlias: true,
+	}
+	fillOptions.ColorScale.ScaleWithColor(color.RGBA{200, 200, 200, 255})
+	vector.FillPath(dst, path, nil, &fillOptions)
+
+	// darker grey stroke
+	strokeOptions := vector.StrokeOptions{
+		Width: 2,
+	}
+	strokeDrawOptions := vector.DrawPathOptions{
+		AntiAlias: true,
+	}
+	strokeDrawOptions.ColorScale.ScaleWithColor(color.RGBA{100, 100, 100, 255})
+	vector.StrokePath(dst, path, &strokeOptions, &strokeDrawOptions)
+}
+
+func DrawArrow(dst *ebiten.Image, sx, sy, ex, ey float32, col color.Color) {
+	// draw line
+	p := &vector.Path{}
+	p.MoveTo(sx, sy)
+	p.LineTo(ex, ey)
+	stroke := vector.StrokeOptions{Width: 3}
+	opt := vector.DrawPathOptions{AntiAlias: true}
+	opt.ColorScale.ScaleWithColor(col)
+	vector.StrokePath(dst, p, &stroke, &opt)
+
+	// arrowhead
+	ax := float64(ex)
+	ay := float64(ey)
+	angle := math.Atan2(float64(ey-sy), float64(ex-sx))
+	size := 10.0
+	// two base points
+	bx := ax - math.Cos(angle)*size
+	by := ay - math.Sin(angle)*size
+	leftX := bx + math.Sin(angle)*size*0.5
+	leftY := by - math.Cos(angle)*size*0.5
+	rightX := bx - math.Sin(angle)*size*0.5
+	rightY := by + math.Cos(angle)*size*0.5
+
+	ph := &vector.Path{}
+	ph.MoveTo(float32(ax), float32(ay))
+	ph.LineTo(float32(leftX), float32(leftY))
+	ph.LineTo(float32(rightX), float32(rightY))
+	ph.Close()
+	opt2 := vector.DrawPathOptions{AntiAlias: true}
+	opt2.ColorScale.ScaleWithColor(col)
+	vector.FillPath(dst, ph, nil, &opt2)
+}
+
+func EdgePointFromCenter(cx, cy, hw, hh, angle float64, outward bool) (float32, float32) {
+	ca := math.Cos(angle)
+	sa := math.Sin(angle)
+	// avoid division by zero
+	absCa := math.Abs(ca)
+	absSa := math.Abs(sa)
+	var radius float64
+	if absCa < 1e-6 {
+		radius = hh / absSa
+	} else if absSa < 1e-6 {
+		radius = hw / absCa
+	} else {
+		rx := hw / absCa
+		ry := hh / absSa
+		if rx < ry {
+			radius = rx
+		} else {
+			radius = ry
+		}
+	}
+	if outward {
+		return float32(cx + ca*radius), float32(cy + sa*radius)
+	}
+	return float32(cx - ca*radius), float32(cy - sa*radius)
+}
+
+func textFace(size float64) *text.GoTextFace {
+	face := &text.GoTextFace{
+		Source: faceSource,
+		Size:   size,
+	}
+	return face
+}
+
+func DrawText(dst *ebiten.Image, str string, x, y, size float64, color color.Color) {
+	op := &text.DrawOptions{}
+	op.ColorScale.ScaleWithColor(color)
+	op.GeoM.Translate(x, y)
+	text.Draw(dst, str, textFace(size), op)
+}
