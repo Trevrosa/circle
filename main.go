@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -16,14 +17,29 @@ type Person struct {
 	Connections []Connection `json:"connections"`
 }
 
-func (self *Person) connect(other *Person, strength int) {
-	self.Connections = append(self.Connections, Connection{Person: other.Name, Strength: strength})
+func (p *Person) connect(other *Person, strength int) {
+	p.Connections = append(p.Connections, Connection{Person: other.Name, Strength: strength})
+}
+
+func (p *Person) unconnect(other *Person) {
+	p.Connections = slices.DeleteFunc(p.Connections, func(c Connection) bool {
+		return c.Person == other.Name
+	})
+}
+
+func (p *Person) isConnectedTo(other *Person) bool {
+	for _, conn := range p.Connections {
+		if conn.Person == other.Name {
+			return true
+		}
+	}
+	return false
 }
 
 type Connection struct {
 	Person   string `json:"person"`
 	Strength int `json:"strength"`
-}
+} // create new savedConnection with the string and this one uses pointers
 
 func main() {
 	people, err := loadPeople()

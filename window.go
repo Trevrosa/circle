@@ -73,9 +73,9 @@ func (w *Window) Update() error {
 		}
 	}
 
-	// - right click a person to start -> shows swatches
-	// - right click a swatch to choose strength (1-5)
-	// - right click another person to create the connection
+	// click a person to start -> shows swatches
+	// click a swatch to choose strength (1-5)
+	// click another person to create the connection
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 		cursorX, cursorY := ebiten.CursorPosition()
 		// if we're choosing a strength, check swatches first
@@ -110,8 +110,12 @@ func (w *Window) Update() error {
 				x, y, width, height := personRect(&w.People[i])
 				if pointInRect(float32(cursorX), float32(cursorY), x, y, width, height) {
 					if i != w.connStartIndex {
-						// append connection by name
-						w.People[w.connStartIndex].connect(&w.People[i], w.connStrength)
+						// delete connection if already connected
+						if w.People[w.connStartIndex].isConnectedTo(&w.People[i]) {
+							w.People[w.connStartIndex].unconnect(&w.People[i])
+						} else {
+							w.People[w.connStartIndex].connect(&w.People[i], w.connStrength)
+						} 
 					}
 					// reset state
 					w.connStartIndex = -1
@@ -125,7 +129,7 @@ func (w *Window) Update() error {
 			return nil
 		}
 
-		// start connection: right-click a person
+		// start connection: click a person
 		for i := len(w.People) - 1; i >= 0; i-- {
 			x, y, width, height := personRect(&w.People[i])
 			if pointInRect(float32(cursorX), float32(cursorY), x, y, width, height) {
