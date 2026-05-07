@@ -20,6 +20,8 @@ func main() {
 	ebiten.SetWindowTitle("Circle")
 	ebiten.SetWindowSize(WIDTH, HEIGHT)
 	ebiten.SetVsyncEnabled(true)
+	
+	pagePeopleCount = len(people)
 	if err := ebiten.RunGame(&Window{People: people, draggingIndex: -1, connStartIndex: -1}); err != nil {
 		log.Fatal(err)
 	}
@@ -43,17 +45,37 @@ func savePeople(people []Person) error {
 }
 
 func loadPeople() ([]Person, error) {
+	type migratableSavedPerson struct {
+		Name string
+		Positions [][2]float32
+		Position [2]float32
+		Connections []savedConnection
+	}
+
 	if file, err := os.ReadFile("people.json"); err == nil {
-		var savedPeople []savedPerson
-		if err := json.Unmarshal(file, &savedPeople); err != nil {
+		var parsed []migratableSavedPerson
+		if err := json.Unmarshal(file, &parsed); err != nil {
 			return nil, err
+		}
+
+		savedPeople := make([]savedPerson, len(parsed))
+		for i, m := range parsed {
+			savedPeople[i] = savedPerson{
+				Name: m.Name,
+				Connections: m.Connections,
+			}
+			if m.Position != [2]float32{} {
+				savedPeople[i].Positions = append(savedPeople[i].Positions, m.Position)
+			} else {
+				savedPeople[i].Positions = m.Positions
+			}
 		}
 
 		people := make([]Person, len(savedPeople))
 		for i, s := range savedPeople {
 			people[i] = Person{
-				Name:     s.Name,
-				Position: s.Position,
+				Name:      s.Name,
+				Positions: s.Positions,
 			}
 		}
 
@@ -72,7 +94,7 @@ func loadPeople() ([]Person, error) {
 	for person := range strings.SplitSeq(string(file), ",") {
 		person = strings.Split(strings.TrimSpace(person), " ")[0]
 		if person != "" {
-			people = append(people, Person{Name: person})
+			people = append(people, Person{Name: person, Positions: [][2]float32{{0, 0}}})
 		}
 	}
 	return people, nil

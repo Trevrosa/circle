@@ -6,6 +6,7 @@ import (
 	"log"
 	"math"
 	"math/rand"
+	"strconv"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/examples/resources/fonts"
@@ -31,6 +32,7 @@ const (
 
 type Window struct {
 	People         []Person
+	pageIndex      int
 	draggingIndex  int // index of person being dragged, -1 if none
 	dragOffsetX    float32
 	dragOffsetY    float32
@@ -38,20 +40,26 @@ type Window struct {
 	connStrength   int
 }
 
+func (w *Window) personPosition(i int) *[2]float32 {
+	return &w.People[i].Positions[w.pageIndex]
+}
+
 func (w *Window) Update() error {
+	// move randomly if at 0,0
 	for i := range w.People {
-		if w.People[i].Position == [2]float32{0, 0} {
-			w.People[i].Position = [2]float32{
+		if *w.personPosition(i) == [2]float32{0, 0} {
+			*w.personPosition(i) = [2]float32{
 				float32(rand.Intn(WIDTH - 100)),
 				float32(rand.Intn(HEIGHT - 60)),
 			}
 		}
 	}
 
+	// dragging
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 		cursorX, cursorY := ebiten.CursorPosition()
 		for i := range w.People {
-			x, y, width, height := personRect(&w.People[i])
+			x, y, width, height := w.personRect(&w.People[i])
 			if pointInRect(float32(cursorX), float32(cursorY), x, y, width, height) {
 				w.draggingIndex = i
 				w.dragOffsetX = float32(cursorX) - x
@@ -60,11 +68,10 @@ func (w *Window) Update() error {
 			}
 		}
 	}
-
 	if w.draggingIndex >= 0 {
 		if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 			cursorX, cursorY := ebiten.CursorPosition()
-			w.People[w.draggingIndex].Position = [2]float32{
+			*w.personPosition(w.draggingIndex) = [2]float32{
 				float32(cursorX) - w.dragOffsetX,
 				float32(cursorY) - w.dragOffsetY,
 			}
@@ -80,7 +87,7 @@ func (w *Window) Update() error {
 		cursorX, cursorY := ebiten.CursorPosition()
 		// if we're choosing a strength, check swatches first
 		if w.connStartIndex >= 0 && w.connStrength == 0 {
-			sx, sy := swatchesPos(&w.People[w.connStartIndex])
+			sx, sy := w.swatchesPos(&w.People[w.connStartIndex])
 			for si := range strengthColors() {
 				swX := swatchWidth(int(sx), si)
 				swY := sy
@@ -93,7 +100,7 @@ func (w *Window) Update() error {
 			if w.connStrength == 0 {
 				// check if clicked a person to cancel and possibly restart
 				for i := range w.People {
-					x, y, width, height := personRect(&w.People[i])
+					x, y, width, height := w.personRect(&w.People[i])
 					if pointInRect(float32(cursorX), float32(cursorY), x, y, width, height) {
 						w.connStartIndex = i
 						return nil
@@ -107,7 +114,7 @@ func (w *Window) Update() error {
 		// if strength is chosen, click a person to create connection
 		if w.connStartIndex >= 0 && w.connStrength > 0 {
 			for i := range w.People {
-				x, y, width, height := personRect(&w.People[i])
+				x, y, width, height := w.personRect(&w.People[i])
 				if pointInRect(float32(cursorX), float32(cursorY), x, y, width, height) {
 					if i != w.connStartIndex {
 						person := &w.People[w.connStartIndex]
@@ -133,11 +140,33 @@ func (w *Window) Update() error {
 
 		// start connection: click a person
 		for i := range w.People {
-			x, y, width, height := personRect(&w.People[i])
+			x, y, width, height := w.personRect(&w.People[i])
 			if pointInRect(float32(cursorX), float32(cursorY), x, y, width, height) {
 				w.connStartIndex = i
 				w.connStrength = 0
 				return nil
+			}
+		}
+	}
+
+	// switching pages
+	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+		cx, cy := ebiten.CursorPosition()
+		for i := range PAGES {
+			x, y, wi, h := i*20+2, 2+1, 18, 18
+			if pointInRect(float32(cx), float32(cy), float32(x), float32(y), float32(wi), float32(h)) {
+				w.pageIndex = i
+
+				for i := range w.People {
+					person := &w.People[i]
+					if w.pageIndex > len(person.Positions)-1 {
+						person.Positions = append(person.Positions, [2]float32{0, 0})
+					}
+					if PAGES[w.pageIndex] != nil {
+						person.Positions[w.pageIndex] = PAGES[w.pageIndex](person, i)
+					}
+				}
+				break
 			}
 		}
 	}
@@ -150,9 +179,9 @@ func swatchWidth(w, si int) float32 {
 	return float32(w) + float32(si*22) - ((float32(len(strengthColors())-3) / 2) * 11)
 }
 
-func personRect(person *Person) (x, y, width, height float32) {
+func (w *Window) personRect(person *Person) (x, y, width, height float32) {
 	textWidth, textHeight := text.Measure(person.Name, textFace(16), 3)
-	return person.Position[0], person.Position[1], float32(textWidth + 20), float32(textHeight + 10)
+	return person.Positions[w.pageIndex][0], person.Positions[w.pageIndex][1], float32(textWidth + 20), float32(textHeight + 10)
 }
 
 func (w *Window) Draw(screen *ebiten.Image) {
@@ -161,14 +190,14 @@ func (w *Window) Draw(screen *ebiten.Image) {
 	// draw people rects
 	for i := range w.People {
 		person := &w.People[i]
-		x, y, width, height := personRect(person)
+		x, y, width, height := w.personRect(person)
 		FillRoundedRect(screen, x, y, width, height, 5)
 		DrawText(screen, person.Name, float64(x)+10, float64(y)+5, 16, color.Black)
 	}
 
 	// draw swatches if choosing a connection strength
 	if w.connStartIndex >= 0 && w.connStrength == 0 {
-		sx, sy := swatchesPos(&w.People[w.connStartIndex])
+		sx, sy := w.swatchesPos(&w.People[w.connStartIndex])
 		cols := strengthColors()
 		for i, col := range cols {
 			cx := swatchWidth(int(sx), i)
@@ -194,12 +223,12 @@ func (w *Window) Draw(screen *ebiten.Image) {
 	// draw connections (arrows) on top so arrowheads are visible
 	for i := range w.People {
 		src := &w.People[i]
-		sx, sy, sw, sh := personRect(src)
+		sx, sy, sw, sh := w.personRect(src)
 		srcCX := float64(sx + sw/2)
 		srcCY := float64(sy + sh/2)
 		for _, c := range src.Connections {
 			tgt := c.Person
-			tx, ty, tw, th := personRect(tgt)
+			tx, ty, tw, th := w.personRect(tgt)
 			tgtCX := float64(tx + tw/2)
 			tgtCY := float64(ty + th/2)
 			angle := math.Atan2(tgtCY-srcCY, tgtCX-srcCX)
@@ -209,6 +238,16 @@ func (w *Window) Draw(screen *ebiten.Image) {
 			col := strengthColor(c.Strength)
 			DrawArrow(screen, startXf, startYf, endXf, endYf, col)
 		}
+	}
+
+	// draw page selector
+	for i := range PAGES {
+		x := float32(i)*20 + 1
+		vector.StrokeRect(screen, x, 2, 20, 20, 2, color.Black, true)
+		if i == w.pageIndex {
+			vector.FillRect(screen, x+1, 2+1, 18, 18, color.RGBA{0x0, 0xFF, 0xFF, 0x88}, true)
+		}
+		DrawText(screen, strconv.Itoa(i), float64(x)+5, 1, 16, color.Black)
 	}
 }
 
@@ -236,8 +275,8 @@ func strengthColor(str int) color.Color {
 	return cols[str-1]
 }
 
-func swatchesPos(person *Person) (float32, float32) {
-	x, y, w, _ := personRect(person)
+func (win *Window) swatchesPos(person *Person) (float32, float32) {
+	x, y, w, _ := win.personRect(person)
 	// position swatches centered above the person rect
 	totalW := float32(5*20 + 4*2)
 	sx := x + w/2 - totalW/2

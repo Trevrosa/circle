@@ -3,9 +3,9 @@ package main
 import "slices"
 
 type Person struct {
-	Name        string       `json:"name"`
-	Position    [2]float32   `json:"position"`
-	Connections []Connection `json:"connections"`
+	Name        string
+	Positions   [][2]float32
+	Connections []Connection
 }
 
 type Connection struct {
@@ -42,14 +42,14 @@ func (p *Person) toSaved() savedPerson {
 	}
 	return savedPerson{
 		Name:        p.Name,
-		Position:    p.Position,
+		Positions:   p.Positions,
 		Connections: connections,
 	}
 }
 
 type savedPerson struct {
 	Name        string            `json:"name"`
-	Position    [2]float32        `json:"position"`
+	Positions   [][2]float32      `json:"positions"`
 	Connections []savedConnection `json:"connections"`
 }
 
