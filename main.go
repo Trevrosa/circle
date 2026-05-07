@@ -5,41 +5,10 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"slices"
 	"strings"
 
 	"github.com/hajimehoshi/ebiten/v2"
 )
-
-type Person struct {
-	Name        string `json:"name"`
-	Position    [2]float32 `json:"position"`
-	Connections []Connection `json:"connections"`
-}
-
-func (p *Person) connect(other *Person, strength int) {
-	p.Connections = append(p.Connections, Connection{Person: other.Name, Strength: strength})
-}
-
-func (p *Person) unconnect(other *Person) {
-	p.Connections = slices.DeleteFunc(p.Connections, func(c Connection) bool {
-		return c.Person == other.Name
-	})
-}
-
-func (p *Person) isConnectedTo(other *Person) bool {
-	for _, conn := range p.Connections {
-		if conn.Person == other.Name {
-			return true
-		}
-	}
-	return false
-}
-
-type Connection struct {
-	Person   string `json:"person"`
-	Strength int `json:"strength"`
-} // create new savedConnection with the string and this one uses pointers
 
 func main() {
 	people, err := loadPeople()
@@ -48,8 +17,9 @@ func main() {
 	}
 
 	Init()
-	ebiten.SetWindowSize(WIDTH, HEIGHT)
 	ebiten.SetWindowTitle("Circle")
+	ebiten.SetWindowSize(WIDTH, HEIGHT)
+	ebiten.SetVsyncEnabled(true)
 	if err := ebiten.RunGame(&Window{People: people, draggingIndex: -1, connStartIndex: -1}); err != nil {
 		log.Fatal(err)
 	}
@@ -60,19 +30,35 @@ func main() {
 }
 
 func savePeople(people []Person) error {
-	data, err := json.MarshalIndent(people, "", "  ")
+	toSave := make([]savedPerson, len(people))
+	for i, p := range people {
+		toSave[i] = p.toSaved()
+	}
+	data, err := json.MarshalIndent(toSave, "", "  ")
 	if err != nil {
 		return err
 	}
+	fmt.Printf("saved %v bytes", len(data))
 	return os.WriteFile("people.json", data, 0644)
 }
 
 func loadPeople() ([]Person, error) {
 	if file, err := os.ReadFile("people.json"); err == nil {
-		var people []Person
-		if err := json.Unmarshal(file, &people); err != nil {
+		var savedPeople []savedPerson
+		if err := json.Unmarshal(file, &savedPeople); err != nil {
 			return nil, err
 		}
+
+		people := make([]Person, len(savedPeople))
+		for i, s := range savedPeople {
+			people[i] = Person{
+				Name: s.Name,
+				Position: s.Position,
+			}
+		}
+
+		LoadSavedConnections(people, savedPeople)
+
 		fmt.Printf("loaded %v people from people.json\n", len(people))
 		return people, nil
 	}

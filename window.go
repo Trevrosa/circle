@@ -35,7 +35,7 @@ type Window struct {
 	dragOffsetX    float32
 	dragOffsetY    float32
 	connStartIndex int // index of person where connection is starting, -1 if not connecting
-	connStrength   int // 0 = not chosen, 1-5 chosen
+	connStrength   int
 }
 
 func (w *Window) Update() error {
@@ -50,7 +50,7 @@ func (w *Window) Update() error {
 
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 		cursorX, cursorY := ebiten.CursorPosition()
-		for i := len(w.People) - 1; i >= 0; i-- {
+		for i := range w.People {
 			x, y, width, height := personRect(&w.People[i])
 			if pointInRect(float32(cursorX), float32(cursorY), x, y, width, height) {
 				w.draggingIndex = i
@@ -82,7 +82,7 @@ func (w *Window) Update() error {
 		if w.connStartIndex >= 0 && w.connStrength == 0 {
 			sx, sy := swatchesPos(&w.People[w.connStartIndex])
 			for si := range strengthColors() {
-				swX := sx + float32(si*22) - 11
+				swX := swatchWidth(int(sx), si)
 				swY := sy
 				if pointInRect(float32(cursorX), float32(cursorY), swX, swY, 20, 20) {
 					w.connStrength = si + 1
@@ -92,7 +92,7 @@ func (w *Window) Update() error {
 			// clicking outside cancels
 			if w.connStrength == 0 {
 				// check if clicked a person to cancel and possibly restart
-				for i := len(w.People) - 1; i >= 0; i-- {
+				for i := range w.People {
 					x, y, width, height := personRect(&w.People[i])
 					if pointInRect(float32(cursorX), float32(cursorY), x, y, width, height) {
 						w.connStartIndex = i
@@ -106,16 +106,18 @@ func (w *Window) Update() error {
 
 		// if strength is chosen, click a person to create connection
 		if w.connStartIndex >= 0 && w.connStrength > 0 {
-			for i := len(w.People) - 1; i >= 0; i-- {
+			for i := range w.People {
 				x, y, width, height := personRect(&w.People[i])
 				if pointInRect(float32(cursorX), float32(cursorY), x, y, width, height) {
 					if i != w.connStartIndex {
+						person := &w.People[w.connStartIndex]
+						other := &w.People[i]
 						// delete connection if already connected
-						if w.People[w.connStartIndex].isConnectedTo(&w.People[i]) {
-							w.People[w.connStartIndex].unconnect(&w.People[i])
+						if person.isConnectedTo(other) {
+							person.unconnect(other)
 						} else {
-							w.People[w.connStartIndex].connect(&w.People[i], w.connStrength)
-						} 
+							person.connect(other, w.connStrength)
+						}
 					}
 					// reset state
 					w.connStartIndex = -1
@@ -130,7 +132,7 @@ func (w *Window) Update() error {
 		}
 
 		// start connection: click a person
-		for i := len(w.People) - 1; i >= 0; i-- {
+		for i := range w.People {
 			x, y, width, height := personRect(&w.People[i])
 			if pointInRect(float32(cursorX), float32(cursorY), x, y, width, height) {
 				w.connStartIndex = i
@@ -143,6 +145,11 @@ func (w *Window) Update() error {
 	return nil
 }
 
+// starts from the left of the rect, rect fits 3, center so only offset by half
+func swatchWidth(w, si int) float32 {
+	return float32(w) + float32(si*22) - ((float32(len(strengthColors())-3) / 2) * 11)
+}
+
 func personRect(person *Person) (x, y, width, height float32) {
 	textWidth, textHeight := text.Measure(person.Name, textFace(16), 3)
 	return person.Position[0], person.Position[1], float32(textWidth + 20), float32(textHeight + 10)
@@ -150,9 +157,9 @@ func personRect(person *Person) (x, y, width, height float32) {
 
 func (w *Window) Draw(screen *ebiten.Image) {
 	screen.Fill(color.White)
-	
+
 	// draw people rects
-	for i := 0; i < len(w.People); i++ {
+	for i := range w.People {
 		person := &w.People[i]
 		x, y, width, height := personRect(person)
 		FillRoundedRect(screen, x, y, width, height, 5)
@@ -164,7 +171,7 @@ func (w *Window) Draw(screen *ebiten.Image) {
 		sx, sy := swatchesPos(&w.People[w.connStartIndex])
 		cols := strengthColors()
 		for i, col := range cols {
-			cx := sx + float32(i*22) - 11
+			cx := swatchWidth(int(sx), i)
 			cy := sy
 			// draw small rect
 			FillRoundedRect(screen, cx, cy, 20, 20, 4)
@@ -185,17 +192,13 @@ func (w *Window) Draw(screen *ebiten.Image) {
 	}
 
 	// draw connections (arrows) on top so arrowheads are visible
-	for i := 0; i < len(w.People); i++ {
+	for i := range w.People {
 		src := &w.People[i]
 		sx, sy, sw, sh := personRect(src)
 		srcCX := float64(sx + sw/2)
 		srcCY := float64(sy + sh/2)
 		for _, c := range src.Connections {
-			ti := findPersonIndexByName(w.People, c.Person)
-			if ti < 0 || ti >= len(w.People) {
-				continue
-			}
-			tgt := &w.People[ti]
+			tgt := c.Person
 			tx, ty, tw, th := personRect(tgt)
 			tgtCX := float64(tx + tw/2)
 			tgtCY := float64(ty + th/2)
@@ -213,15 +216,6 @@ func pointInRect(px, py, x, y, width, height float32) bool {
 	return px >= x && px <= x+width && py >= y && py <= y+height
 }
 
-func findPersonIndexByName(people []Person, name string) int {
-	for i := range people {
-		if people[i].Name == name {
-			return i
-		}
-	}
-	return -1
-}
-
 func strengthColors() []color.Color {
 	return []color.Color{
 		color.RGBA{0xFF, 0x33, 0x33, 0xFF}, // red
@@ -229,7 +223,8 @@ func strengthColors() []color.Color {
 		color.RGBA{0x66, 0x99, 0xFF, 0xFF}, // blue
 		color.RGBA{0xFF, 0x99, 0x33, 0xFF}, // orange
 		color.RGBA{0x80, 0x80, 0x80, 0xFF}, // grey
-		color.Black, // black
+		color.Black,
+		color.RGBA{0x80, 0x00, 0x80, 0xFF}, // purple
 	}
 }
 
