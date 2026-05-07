@@ -58,6 +58,7 @@ func loadPeople() ([]Person, error) {
 			return nil, err
 		}
 
+		hasMigrated := false
 		savedPeople := make([]savedPerson, len(parsed))
 		for i, m := range parsed {
 			savedPeople[i] = savedPerson{
@@ -65,10 +66,25 @@ func loadPeople() ([]Person, error) {
 				Connections: m.Connections,
 			}
 			if m.Position != [2]float32{} {
+				hasMigrated = true
 				savedPeople[i].Positions = append(savedPeople[i].Positions, m.Position)
 			} else {
 				savedPeople[i].Positions = m.Positions
 			}
+		}
+		if hasMigrated {
+			fmt.Println("need to migrate people, making backup")
+			if err := os.WriteFile("people.json.bak", file, 0644); err != nil {
+				panic(err)
+			}
+			data, err := json.MarshalIndent(savedPeople, "", "  ")
+			if err != nil {
+				panic(err)
+			}
+			if err := os.WriteFile("people.json", data, 0644); err != nil {
+				panic(err)
+			}
+			fmt.Println("updated people.json")
 		}
 
 		people := make([]Person, len(savedPeople))
