@@ -2,10 +2,9 @@ package main
 
 import "slices"
 
-
 type Person struct {
-	Name        string `json:"name"`
-	Position    [2]float32 `json:"position"`
+	Name        string       `json:"name"`
+	Position    [2]float32   `json:"position"`
 	Connections []Connection `json:"connections"`
 }
 
@@ -35,28 +34,28 @@ func (p *Person) isConnectedTo(other *Person) bool {
 
 func (p *Person) toSaved() savedPerson {
 	connections := make([]savedConnection, len(p.Connections))
-	for i, conn := range(p.Connections) {
+	for i, conn := range p.Connections {
 		connections[i] = savedConnection{
-			Person: conn.Person.Name,
+			Person:   conn.Person.Name,
 			Strength: conn.Strength,
 		}
 	}
 	return savedPerson{
-		Name: p.Name,
-		Position: p.Position,
+		Name:        p.Name,
+		Position:    p.Position,
 		Connections: connections,
 	}
 }
 
 type savedPerson struct {
-	Name        string `json:"name"`
-	Position    [2]float32 `json:"position"`
+	Name        string            `json:"name"`
+	Position    [2]float32        `json:"position"`
 	Connections []savedConnection `json:"connections"`
 }
 
 type savedConnection struct {
-	Person string `json:"person"`
-	Strength int `json:"strength"`
+	Person   string `json:"person"`
+	Strength int    `json:"strength"`
 }
 
 func LoadSavedConnections(people []Person, saved []savedPerson) {
@@ -71,13 +70,13 @@ func LoadSavedConnections(people []Person, saved []savedPerson) {
 				}
 			}
 			if other == nil {
-				panic("there is a guy connected with a nonexistant guy")
+				panic("there is a guy connected with a nonexistent guy")
 			}
 			conn := Connection{
-				Person: other,
+				Person:   other,
 				Strength: sConn.Strength,
 			}
 			people[i].Connections = append(people[i].Connections, conn)
-		} 
+		}
 	}
 }

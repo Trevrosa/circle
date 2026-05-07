@@ -23,7 +23,7 @@ func main() {
 	if err := ebiten.RunGame(&Window{People: people, draggingIndex: -1, connStartIndex: -1}); err != nil {
 		log.Fatal(err)
 	}
-	
+
 	if err := savePeople(people); err != nil {
 		log.Fatal(err)
 	}
@@ -52,7 +52,7 @@ func loadPeople() ([]Person, error) {
 		people := make([]Person, len(savedPeople))
 		for i, s := range savedPeople {
 			people[i] = Person{
-				Name: s.Name,
+				Name:     s.Name,
 				Position: s.Position,
 			}
 		}
