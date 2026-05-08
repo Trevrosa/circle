@@ -37,15 +37,53 @@ type Window struct {
 	dragOffsetY    float32
 	connStartIndex int // index of person where connection is starting, -1 if not connecting
 	connStrength   int
+	connMap        map[*Person]float32 // map of the total connections (including from others) for each person
 }
 
 func NewWindow(people []Person) *Window {
 	Init()
-	return &Window{People: people, draggingIndex: -1, connStartIndex: -1}
+	return &Window{
+		People:         people,
+		draggingIndex:  -1,
+		connStartIndex: -1,
+		connMap:        initConnMap(people),
+	}
+}
+
+func initConnMap(people []Person) map[*Person]float32 {
+	connMap := make(map[*Person]float32, len(people))
+	for pi := range people {
+		p := &people[pi]
+		for _, c := range p.Connections {
+			connMap[p] += colorStrength(c.Strength)
+			connMap[c.Person] += colorStrength(c.Strength)
+		}
+	}
+	return connMap
 }
 
 func (w *Window) personPosition(i int) *[2]float32 {
 	return &w.People[i].Positions[w.pageIndex]
+}
+
+func (w *Window) connect(p *Person, other *Person) {
+	strength := w.connStrength
+	p.connect(other, strength)
+	w.connMap[p] += colorStrength(strength)
+	w.connMap[other] += colorStrength(strength)
+}
+
+func (w *Window) unconnect(p *Person, other *Person) {
+	strength := 100 // colorStrength will return 0
+	for _, c := range p.Connections {
+		if c.Person == other {
+			strength = c.Strength
+			break
+		}
+	}
+	p.unconnect(other)
+	w.connMap[p] -= colorStrength(strength)
+	w.connMap[other] -= colorStrength(strength)
 }
 
 func (w *Window) Update() error {
@@ -125,9 +163,9 @@ func (w *Window) Update() error {
 						other := &w.People[i]
 						// delete connection if already connected
 						if person.isConnectedTo(other) {
-							person.unconnect(other)
+							w.unconnect(person, other)
 						} else {
-							person.connect(other, w.connStrength)
+							w.connect(person, other)
 						}
 					}
 					// reset state
@@ -163,6 +201,7 @@ func (w *Window) Update() error {
 
 				for i := range w.People {
 					person := &w.People[i]
+					// FIXME: should not work if someone, for the first time, e.g. presses page 3
 					if w.pageIndex > len(person.Positions)-1 {
 						person.Positions = append(person.Positions, [2]float32{0, 0})
 					}
@@ -246,6 +285,20 @@ func strengthColors() []color.Color {
 		color.RGBA{0x80, 0x80, 0x80, 0xFF}, // grey
 		color.Black,
 		color.RGBA{0x80, 0x00, 0x80, 0xFF}, // purple
+	}
+}
+
+func colorStrength(str int) float32 {
+	if str == 1 {
+		return 3
+	} else if str <= 4 {
+		return 5 - float32(str)
+	} else if str == 5 {
+		return 0.5
+	} else if str == 6 {
+		return -1
+	} else {
+		return 0
 	}
 }
 

@@ -44,7 +44,7 @@ func savePeople(people []Person) error {
 }
 
 func loadPeople() ([]Person, error) {
-	type migratableSavedPerson struct {
+	type migratablePerson struct {
 		Name        string
 		Positions   [][2]float32
 		Position    [2]float32
@@ -52,14 +52,14 @@ func loadPeople() ([]Person, error) {
 	}
 
 	if file, err := os.ReadFile("people.json"); err == nil {
-		var parsed []migratableSavedPerson
-		if err := json.Unmarshal(file, &parsed); err != nil {
+		var migratable []migratablePerson
+		if err := json.Unmarshal(file, &migratable); err != nil {
 			return nil, err
 		}
 
 		hasMigrated := false
-		savedPeople := make([]savedPerson, len(parsed))
-		for i, m := range parsed {
+		savedPeople := make([]savedPerson, len(migratable))
+		for i, m := range migratable {
 			savedPeople[i] = savedPerson{
 				Name:        m.Name,
 				Connections: m.Connections,

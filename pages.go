@@ -42,3 +42,7 @@ func page2(person *Person, i int) [2]float32 {
 	y := centerY + radius*math.Sin(angle) - 16
 	return [2]float32{float32(x), float32(y)}
 }
+
+func fromPage0(person *Person, i int) [2]float32 {
+	return person.Positions[0]
+}

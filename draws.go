@@ -27,12 +27,9 @@ func (w *Window) drawPerson(screen *ebiten.Image, i int) {
 		FillRoundedRect(screen, x, y, width, height, 5, color)
 	} else if w.pageIndex == 4 {
 		// based on connection strength
-		connectionStrength := 0
-		for _, c := range person.Connections {
-			connectionStrength += c.Strength
-		}
+		connectionStrength := float64(w.connMap[person])
 
-		t := float64(connectionStrength) / (5 * 30) // max strength is 5, max connections is 30
+		t := connectionStrength / (20) // max strength is 5, max connections is 30
 		if t > 1 {
 			t = 1
 		} else if t < 0 {
@@ -42,7 +39,7 @@ func (w *Window) drawPerson(screen *ebiten.Image, i int) {
 		color := color.RGBA{redGreen, redGreen, 255, 255}
 		FillRoundedRect(screen, x, y, width, height, 5, color)
 	} else {
-		FillRoundedRect(screen, x, y, width, height, 5, GreyFill)
+		FillRoundedRect(screen, x, y, width, height, 5, color.White)
 	}
 	DrawText(screen, person.Name, float64(x)+10, float64(y)+5, 16, color.Black)
 }
