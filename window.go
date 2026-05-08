@@ -201,8 +201,7 @@ func (w *Window) Update() error {
 
 				for i := range w.People {
 					person := &w.People[i]
-					// FIXME: should not work if someone, for the first time, e.g. presses page 3
-					if w.pageIndex > len(person.Positions)-1 {
+					for range w.pageIndex - len(person.Positions) + 1 {
 						person.Positions = append(person.Positions, [2]float32{0, 0})
 					}
 					if PAGES[w.pageIndex] != nil {
