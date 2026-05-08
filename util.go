@@ -9,7 +9,9 @@ import (
 	"github.com/hajimehoshi/ebiten/v2/vector"
 )
 
-func FillRoundedRect(dst *ebiten.Image, x, y, width, height, radius float32) {
+var GreyFill = color.RGBA{200, 200, 200, 255}
+
+func FillRoundedRect(dst *ebiten.Image, x, y, width, height, radius float32, fill color.Color) {
 	path := &vector.Path{}
 
 	// top left
@@ -35,7 +37,7 @@ func FillRoundedRect(dst *ebiten.Image, x, y, width, height, radius float32) {
 	fillOptions := vector.DrawPathOptions{
 		AntiAlias: true,
 	}
-	fillOptions.ColorScale.ScaleWithColor(color.RGBA{200, 200, 200, 255})
+	fillOptions.ColorScale.ScaleWithColor(fill)
 	vector.FillPath(dst, path, nil, &fillOptions)
 
 	// darker grey stroke

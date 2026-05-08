@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"image/color"
 	"log"
-	"math"
 	"math/rand"
 	"strconv"
 
@@ -38,6 +37,11 @@ type Window struct {
 	dragOffsetY    float32
 	connStartIndex int // index of person where connection is starting, -1 if not connecting
 	connStrength   int
+}
+
+func NewWindow(people []Person) *Window {
+	Init()
+	return &Window{People: people, draggingIndex: -1, connStartIndex: -1}
 }
 
 func (w *Window) personPosition(i int) *[2]float32 {
@@ -179,6 +183,15 @@ func swatchWidth(w, si int) float32 {
 	return float32(w) + float32(si*22) - ((float32(len(strengthColors())-3) / 2) * 11)
 }
 
+func (win *Window) swatchesPos(person *Person) (float32, float32) {
+	x, y, w, _ := win.personRect(person)
+	// position swatches centered above the person rect
+	totalW := float32(5*20 + 4*2)
+	sx := x + w/2 - totalW/2
+	sy := y - 26
+	return sx, sy
+}
+
 func (w *Window) personRect(person *Person) (x, y, width, height float32) {
 	textWidth, textHeight := text.Measure(person.Name, textFace(16), 3)
 	return person.Positions[w.pageIndex][0], person.Positions[w.pageIndex][1], float32(textWidth + 20), float32(textHeight + 10)
@@ -189,10 +202,7 @@ func (w *Window) Draw(screen *ebiten.Image) {
 
 	// draw people rects
 	for i := range w.People {
-		person := &w.People[i]
-		x, y, width, height := w.personRect(person)
-		FillRoundedRect(screen, x, y, width, height, 5)
-		DrawText(screen, person.Name, float64(x)+10, float64(y)+5, 16, color.Black)
+		w.drawPerson(screen, i)
 	}
 
 	// draw swatches if choosing a connection strength
@@ -203,41 +213,13 @@ func (w *Window) Draw(screen *ebiten.Image) {
 			cx := swatchWidth(int(sx), i)
 			cy := sy
 			// draw small rect
-			FillRoundedRect(screen, cx, cy, 20, 20, 4)
-			// fill with color by drawing a smaller filled rect
-			// use vector.FillPath directly for color overlay
-			// Draw a filled square using FillRoundedRect with smaller size and color overlay by temporarily calling DrawText trick
-			// We'll draw a colored rectangle by drawing a colored filled path
-			p := &vector.Path{}
-			p.MoveTo(cx, cy)
-			p.LineTo(cx+20, cy)
-			p.LineTo(cx+20, cy+20)
-			p.LineTo(cx, cy+20)
-			p.Close()
-			opt := vector.DrawPathOptions{AntiAlias: true}
-			opt.ColorScale.ScaleWithColor(col)
-			vector.FillPath(screen, p, nil, &opt)
+			FillRoundedRect(screen, cx, cy, 20, 20, 4, col)
 		}
 	}
 
 	// draw connections (arrows) on top so arrowheads are visible
 	for i := range w.People {
-		src := &w.People[i]
-		sx, sy, sw, sh := w.personRect(src)
-		srcCX := float64(sx + sw/2)
-		srcCY := float64(sy + sh/2)
-		for _, c := range src.Connections {
-			tgt := c.Person
-			tx, ty, tw, th := w.personRect(tgt)
-			tgtCX := float64(tx + tw/2)
-			tgtCY := float64(ty + th/2)
-			angle := math.Atan2(tgtCY-srcCY, tgtCX-srcCX)
-			// compute edge points
-			startXf, startYf := EdgePointFromCenter(srcCX, srcCY, float64(sw)/2, float64(sh)/2, angle, true)
-			endXf, endYf := EdgePointFromCenter(tgtCX, tgtCY, float64(tw)/2, float64(th)/2, angle, false)
-			col := strengthColor(c.Strength)
-			DrawArrow(screen, startXf, startYf, endXf, endYf, col)
-		}
+		w.drawConnections(screen, i)
 	}
 
 	// draw page selector
@@ -273,15 +255,6 @@ func strengthColor(str int) color.Color {
 		return color.Black
 	}
 	return cols[str-1]
-}
-
-func (win *Window) swatchesPos(person *Person) (float32, float32) {
-	x, y, w, _ := win.personRect(person)
-	// position swatches centered above the person rect
-	totalW := float32(5*20 + 4*2)
-	sx := x + w/2 - totalW/2
-	sy := y - 26
-	return sx, sy
 }
 
 func (w *Window) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {

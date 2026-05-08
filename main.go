@@ -16,13 +16,12 @@ func main() {
 		panic(err)
 	}
 
-	Init()
 	ebiten.SetWindowTitle("Circle")
 	ebiten.SetWindowSize(WIDTH, HEIGHT)
 	ebiten.SetVsyncEnabled(true)
-	
+
 	pagePeopleCount = len(people)
-	if err := ebiten.RunGame(&Window{People: people, draggingIndex: -1, connStartIndex: -1}); err != nil {
+	if err := ebiten.RunGame(NewWindow(people)); err != nil {
 		log.Fatal(err)
 	}
 
@@ -46,9 +45,9 @@ func savePeople(people []Person) error {
 
 func loadPeople() ([]Person, error) {
 	type migratableSavedPerson struct {
-		Name string
-		Positions [][2]float32
-		Position [2]float32
+		Name        string
+		Positions   [][2]float32
+		Position    [2]float32
 		Connections []savedConnection
 	}
 
@@ -62,7 +61,7 @@ func loadPeople() ([]Person, error) {
 		savedPeople := make([]savedPerson, len(parsed))
 		for i, m := range parsed {
 			savedPeople[i] = savedPerson{
-				Name: m.Name,
+				Name:        m.Name,
 				Connections: m.Connections,
 			}
 			if m.Position != [2]float32{} {

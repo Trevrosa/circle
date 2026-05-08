@@ -2,10 +2,12 @@ package main
 
 import "math"
 
-var PAGES = [3](func(*Person, int) [2]float32){
+var PAGES = [](func(*Person, int) [2]float32){
 	nil,
 	page1,
 	page2,
+	nil,
+	nil,
 }
 
 var pagePeopleCount int = 0
