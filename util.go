@@ -34,19 +34,13 @@ func FillRoundedRect(dst *ebiten.Image, x, y, width, height, radius float32, fil
 	path.QuadTo(x, y, x+radius, y)
 
 	// light grey fill
-	fillOptions := vector.DrawPathOptions{
-		AntiAlias: true,
-	}
+	fillOptions := vector.DrawPathOptions{AntiAlias: false}
 	fillOptions.ColorScale.ScaleWithColor(fill)
 	vector.FillPath(dst, path, nil, &fillOptions)
 
 	// darker grey stroke
-	strokeOptions := vector.StrokeOptions{
-		Width: 2,
-	}
-	strokeDrawOptions := vector.DrawPathOptions{
-		AntiAlias: true,
-	}
+	strokeOptions := vector.StrokeOptions{Width: 2}
+	strokeDrawOptions := vector.DrawPathOptions{AntiAlias: true}
 	strokeDrawOptions.ColorScale.ScaleWithColor(color.RGBA{100, 100, 100, 255})
 	vector.StrokePath(dst, path, &strokeOptions, &strokeDrawOptions)
 }
@@ -79,6 +73,7 @@ func DrawArrow(dst *ebiten.Image, sx, sy, ex, ey float32, col color.Color) {
 	ph.LineTo(float32(leftX), float32(leftY))
 	ph.LineTo(float32(rightX), float32(rightY))
 	ph.Close()
+	
 	opt2 := vector.DrawPathOptions{AntiAlias: true}
 	opt2.ColorScale.ScaleWithColor(col)
 	vector.FillPath(dst, ph, nil, &opt2)
