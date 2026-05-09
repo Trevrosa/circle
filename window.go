@@ -35,8 +35,8 @@ type Window struct {
 	draggingIndex  int // index of person being dragged, -1 if none
 	dragOffsetX    float32
 	dragOffsetY    float32
-	connStartIndex int // index of person where connection is starting, -1 if not connecting
-	connStrength   int
+	connStartIndex int                 // index of person where connection is starting, -1 if not connecting
+	connStrength   int                 // stored starting from 1
 	connMap        map[*Person]float32 // map of the total connections (including from others) for each person
 }
 
@@ -55,8 +55,8 @@ func initConnMap(people []Person) map[*Person]float32 {
 	for pi := range people {
 		p := &people[pi]
 		for _, c := range p.Connections {
-			connMap[p] += colorStrength(c.Strength)
-			connMap[c.Person] += colorStrength(c.Strength)
+			connMap[p] += strengthValue(c.Strength)
+			connMap[c.Person] += strengthValue(c.Strength)
 		}
 	}
 	return connMap
@@ -69,8 +69,8 @@ func (w *Window) personPosition(i int) *[2]float32 {
 func (w *Window) connect(p *Person, other *Person) {
 	strength := w.connStrength
 	p.connect(other, strength)
-	w.connMap[p] += colorStrength(strength)
-	w.connMap[other] += colorStrength(strength)
+	w.connMap[p] += strengthValue(strength)
+	w.connMap[other] += strengthValue(strength)
 }
 
 func (w *Window) unconnect(p *Person, other *Person) {
@@ -82,8 +82,8 @@ func (w *Window) unconnect(p *Person, other *Person) {
 		}
 	}
 	p.unconnect(other)
-	w.connMap[p] -= colorStrength(strength)
-	w.connMap[other] -= colorStrength(strength)
+	w.connMap[p] -= strengthValue(strength)
+	w.connMap[other] -= strengthValue(strength)
 }
 
 func (w *Window) Update() error {
@@ -287,7 +287,7 @@ func strengthColors() []color.Color {
 	}
 }
 
-func colorStrength(str int) float32 {
+func strengthValue(str int) float32 {
 	if str == 1 {
 		return 3
 	} else if str <= 4 {
