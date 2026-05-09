@@ -110,17 +110,14 @@ func EdgePointFromCenter(cx, cy, hw, hh, angle float64, outward bool) (float32, 
 	return float32(cx - ca*radius), float32(cy - sa*radius)
 }
 
-func textFace(size float64) *text.GoTextFace {
-	face := &text.GoTextFace{
-		Source: faceSource,
-		Size:   size,
-	}
-	return face
+func PointInRect(px, py int, x, y, width, height float32) bool {
+	pxf, pyf := float32(px), float32(py)
+	return pxf >= x && pxf <= x+width && pyf >= y && pyf <= y+height
 }
 
-func DrawText(dst *ebiten.Image, str string, x, y, size float64, color color.Color) {
+func DrawText(dst *ebiten.Image, str string, x, y float64, textFace text.Face, color color.Color) {
 	op := &text.DrawOptions{}
 	op.ColorScale.ScaleWithColor(color)
 	op.GeoM.Translate(x, y)
-	text.Draw(dst, str, textFace(size), op)
+	text.Draw(dst, str, textFace, op)
 }

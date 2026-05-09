@@ -15,6 +15,7 @@ import (
 )
 
 var faceSource *text.GoTextFaceSource
+var textFace16 *text.GoTextFace
 
 func Init() {
 	s, err := text.NewGoTextFaceSource(bytes.NewReader(fonts.MPlus1pRegular_ttf))
@@ -22,6 +23,11 @@ func Init() {
 		log.Fatal(err)
 	}
 	faceSource = s
+
+	textFace16 = &text.GoTextFace{
+		Source: faceSource,
+		Size:   16,
+	}
 }
 
 const (
@@ -32,11 +38,11 @@ const (
 type Window struct {
 	People         []Person
 	pageIndex      int
-	draggingIndex  int // index of person being dragged, -1 if none
+	personDragged  int // index of person being dragged, -1 if none
 	dragOffsetX    float32
 	dragOffsetY    float32
 	connStartIndex int                 // index of person where connection is starting, -1 if not connecting
-	connStrength   int                 // stored starting from 1
+	connStrength   int                 // stored starting from 1, 0 means not chosen
 	connMap        map[*Person]float32 // map of the total connections (including from others) for each person
 	dirty          bool                // whether we need to render
 }
@@ -45,7 +51,7 @@ func NewWindow(people []Person) *Window {
 	Init()
 	return &Window{
 		People:         people,
-		draggingIndex:  -1,
+		personDragged:  -1,
 		connStartIndex: -1,
 		connMap:        initConnMap(people),
 		dirty:          true,
@@ -80,7 +86,7 @@ func (w *Window) connect(p *Person, other *Person) {
 func (w *Window) unconnect(p *Person, other *Person) {
 	w.dirty = true
 
-	strength := 100 // colorStrength will return 0
+	strength := 100 // strengthValue will return 0 for out of range
 	for _, c := range p.Connections {
 		if c.Person == other {
 			strength = c.Strength
@@ -104,112 +110,42 @@ func (w *Window) Update() error {
 		}
 	}
 
-	// dragging
+	// dragging - detect first click
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 		cursorX, cursorY := ebiten.CursorPosition()
 		for i := range w.People {
 			x, y, width, height := w.personRect(&w.People[i])
-			if pointInRect(float32(cursorX), float32(cursorY), x, y, width, height) {
-				w.dirty = true
-				w.draggingIndex = i
+			if PointInRect(cursorX, cursorY, x, y, width, height) {
+				w.personDragged = i
 				w.dragOffsetX = float32(cursorX) - x
 				w.dragOffsetY = float32(cursorY) - y
 				break
 			}
 		}
 	}
-	if w.draggingIndex >= 0 {
+	// detect mousedown to drag
+	if w.personDragged >= 0 {
 		if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 			w.dirty = true
 			cursorX, cursorY := ebiten.CursorPosition()
-			*w.personPosition(w.draggingIndex) = [2]float32{
+			*w.personPosition(w.personDragged) = [2]float32{
 				float32(cursorX) - w.dragOffsetX,
 				float32(cursorY) - w.dragOffsetY,
 			}
 		} else {
-			w.draggingIndex = -1
+			w.personDragged = -1
 		}
 	}
 
-	// click a person to start -> shows swatches
-	// click a swatch to choose strength (1-5)
-	// click another person to create the connection
-	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
-		cursorX, cursorY := ebiten.CursorPosition()
-		// if we're choosing a strength, check swatches first
-		if w.connStartIndex >= 0 && w.connStrength == 0 {
-			sx, sy := w.swatchesPos(&w.People[w.connStartIndex])
-			for si := range strengthColors() {
-				swX := swatchWidth(int(sx), si)
-				swY := sy
-				if pointInRect(float32(cursorX), float32(cursorY), swX, swY, 20, 20) {
-					w.dirty = true
-					w.connStrength = si + 1
-					break
-				}
-			}
-			// clicking outside cancels
-			if w.connStrength == 0 {
-				// check if clicked a person to cancel and possibly restart
-				for i := range w.People {
-					x, y, width, height := w.personRect(&w.People[i])
-					if pointInRect(float32(cursorX), float32(cursorY), x, y, width, height) {
-						w.connStartIndex = i
-						break
-					}
-				}
-				w.dirty = true
-				w.connStartIndex = -1
-			}
-			return nil
-		}
-
-		// if strength is chosen, click a person to create connection
-		if w.connStartIndex >= 0 && w.connStrength > 0 {
-			for i := range w.People {
-				x, y, width, height := w.personRect(&w.People[i])
-				if pointInRect(float32(cursorX), float32(cursorY), x, y, width, height) {
-					if i != w.connStartIndex {
-						person := &w.People[w.connStartIndex]
-						other := &w.People[i]
-						// dirty is set by the connect/unconnect functions
-						// delete connection if already connected
-						if person.isConnectedTo(other) {
-							w.unconnect(person, other)
-						} else {
-							w.connect(person, other)
-						}
-					}
-					// reset state
-					w.connStartIndex = -1
-					w.connStrength = 0
-					return nil
-				}
-			}
-
-			// clicked outside, cancel
-			w.connStartIndex = -1
-			w.connStrength = 0
-			return nil
-		}
-
-		// start connection: click a person
-		for i := range w.People {
-			x, y, width, height := w.personRect(&w.People[i])
-			if pointInRect(float32(cursorX), float32(cursorY), x, y, width, height) {
-				w.connStartIndex = i
-				w.connStrength = 0
-				break
-			}
-		}
-	}
+	// making connections
+	w.checkConnectionInputs()
 
 	// switching pages
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 		cx, cy := ebiten.CursorPosition()
 		for i := range PAGES {
 			x, y, wi, h := i*20+2, 2+1, 18, 18
-			if pointInRect(float32(cx), float32(cy), float32(x), float32(y), float32(wi), float32(h)) {
+			if PointInRect(cx, cy, float32(x), float32(y), float32(wi), float32(h)) {
 				w.dirty = true
 				w.pageIndex = i
 
@@ -245,7 +181,7 @@ func (win *Window) swatchesPos(person *Person) (float32, float32) {
 }
 
 func (w *Window) personRect(person *Person) (x, y, width, height float32) {
-	textWidth, textHeight := text.Measure(person.Name, textFace(16), 3)
+	textWidth, textHeight := text.Measure(person.Name, textFace16, 3)
 	return person.Positions[w.pageIndex][0], person.Positions[w.pageIndex][1], float32(textWidth + 20), float32(textHeight + 10)
 }
 
@@ -262,6 +198,11 @@ func (w *Window) Draw(screen *ebiten.Image) {
 		w.drawPerson(screen, i)
 	}
 
+	// draw connection arrows on top of rects
+	for i := range w.People {
+		w.drawConnections(screen, i)
+	}
+
 	// draw swatches if choosing a connection strength
 	if w.connStartIndex >= 0 && w.connStrength == 0 {
 		sx, sy := w.swatchesPos(&w.People[w.connStartIndex])
@@ -274,11 +215,6 @@ func (w *Window) Draw(screen *ebiten.Image) {
 		}
 	}
 
-	// draw connections (arrows) on top so arrowheads are visible
-	for i := range w.People {
-		w.drawConnections(screen, i)
-	}
-
 	// draw page selector
 	for i := range PAGES {
 		x := float32(i)*20 + 1
@@ -286,12 +222,8 @@ func (w *Window) Draw(screen *ebiten.Image) {
 		if i == w.pageIndex {
 			vector.FillRect(screen, x+1, 2+1, 18, 18, color.RGBA{0x0, 0xFF, 0xFF, 0x88}, true)
 		}
-		DrawText(screen, strconv.Itoa(i), float64(x)+5, 1, 16, color.Black)
+		DrawText(screen, strconv.Itoa(i), float64(x)+5, 1, textFace16, color.Black)
 	}
-}
-
-func pointInRect(px, py, x, y, width, height float32) bool {
-	return px >= x && px <= x+width && py >= y && py <= y+height
 }
 
 func strengthColors() []color.Color {

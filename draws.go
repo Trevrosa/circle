@@ -42,7 +42,7 @@ func (w *Window) drawPerson(screen *ebiten.Image, i int) {
 	default:
 		FillRoundedRect(screen, x, y, width, height, 5, color.White)
 	}
-	DrawText(screen, person.Name, float64(x)+10, float64(y)+5, 16, color.Black)
+	DrawText(screen, person.Name, float64(x)+10, float64(y)+5, textFace16, color.Black)
 }
 
 func (w *Window) drawConnections(screen *ebiten.Image, i int) {
