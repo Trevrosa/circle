@@ -11,8 +11,8 @@ func (w *Window) drawPerson(screen *ebiten.Image, i int) {
 	person := &w.People[i]
 	x, y, width, height := w.personRect(person)
 
-	switch w.pageIndex {
-	case 3:
+	switch w.colorMode {
+	case ByNumConnections:
 		connections := len(person.Connections)
 
 		t := float64(connections) / (30)
@@ -25,8 +25,8 @@ func (w *Window) drawPerson(screen *ebiten.Image, i int) {
 		// more connections more red, least connections white
 		greenBlue := uint8(math.Round(255 * (1 - t)))
 		color := color.RGBA{255, greenBlue, greenBlue, 255}
-		FillRoundedRect(screen, x, y, width, height, 5, color)
-	case 4:
+		DrawRoundedRect(screen, x, y, width, height, 5, color)
+	case ByConnectionStrength:
 		// based on connection strength
 		connectionStrength := float64(w.connMap[person])
 
@@ -38,9 +38,9 @@ func (w *Window) drawPerson(screen *ebiten.Image, i int) {
 		}
 		redGreen := uint8(math.Round(255 * (1 - t)))
 		color := color.RGBA{redGreen, redGreen, 255, 255}
-		FillRoundedRect(screen, x, y, width, height, 5, color)
+		DrawRoundedRect(screen, x, y, width, height, 5, color)
 	default:
-		FillRoundedRect(screen, x, y, width, height, 5, color.White)
+		DrawRoundedRect(screen, x, y, width, height, 5, color.White)
 	}
 	DrawText(screen, person.Name, float64(x)+10, float64(y)+5, textFace16, color.Black)
 }

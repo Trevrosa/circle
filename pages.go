@@ -6,8 +6,6 @@ var PAGES = [](func(*Person, int) [2]float32){
 	nil,
 	page1,
 	page2,
-	nil,
-	nil,
 }
 
 var pagePeopleCount int = 0

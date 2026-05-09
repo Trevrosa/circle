@@ -11,7 +11,7 @@ import (
 
 var GreyFill = color.RGBA{200, 200, 200, 255}
 
-func FillRoundedRect(dst *ebiten.Image, x, y, width, height, radius float32, fill color.Color) {
+func DrawRoundedRect(dst *ebiten.Image, x, y, width, height, radius float32, fill color.Color) {
 	path := &vector.Path{}
 
 	// top left
@@ -73,10 +73,34 @@ func DrawArrow(dst *ebiten.Image, sx, sy, ex, ey float32, col color.Color) {
 	ph.LineTo(float32(leftX), float32(leftY))
 	ph.LineTo(float32(rightX), float32(rightY))
 	ph.Close()
-	
+
 	opt2 := vector.DrawPathOptions{AntiAlias: true}
 	opt2.ColorScale.ScaleWithColor(col)
 	vector.FillPath(dst, ph, nil, &opt2)
+}
+
+// equilateral triangle pointing down with center at (x, y)
+func DrawTriangle(dst *ebiten.Image, x, y, length float32, col color.Color) {
+	path := &vector.Path{}
+	height := length * float32(math.Sqrt(3)) / 2
+	topY := y + (2*height)/3
+	baseY := y - height/3
+	leftX := x - length/2
+	rightX := x + length/2
+
+	path.MoveTo(x, topY)
+	path.LineTo(leftX, baseY)
+	path.LineTo(rightX, baseY)
+	path.Close()
+
+	fillOptions := vector.DrawPathOptions{AntiAlias: false}
+	fillOptions.ColorScale.ScaleWithColor(col)
+	vector.FillPath(dst, path, nil, &fillOptions)
+
+	// strokeOptions := vector.StrokeOptions{Width: 2}
+	// strokeDrawOptions := vector.DrawPathOptions{AntiAlias: true}
+	// strokeDrawOptions.ColorScale.ScaleWithColor(col)
+	// vector.StrokePath(dst, path, &strokeOptions, &strokeDrawOptions)
 }
 
 func EdgePointFromCenter(cx, cy, hw, hh, angle float64, outward bool) (float32, float32) {

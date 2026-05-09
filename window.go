@@ -35,16 +35,40 @@ const (
 	HEIGHT = 800
 )
 
+type ColorMode int
+
+const (
+	Default ColorMode = iota
+	ByNumConnections
+	ByConnectionStrength
+	NumColorModes
+)
+
+func (cm ColorMode) String() string {
+	switch cm {
+	case ByNumConnections:
+		return "ByNumConnections"
+	case ByConnectionStrength:
+		return "ByConnectionStrength"
+	case NumColorModes:
+		panic("invalid color mode")
+	default:
+		return "Default"
+	}
+}
+
 type Window struct {
-	People         []Person
-	pageIndex      int
-	personDragged  int // index of person being dragged, -1 if none
-	dragOffsetX    float32
-	dragOffsetY    float32
-	connStartIndex int                 // index of person where connection is starting, -1 if not connecting
-	connStrength   int                 // stored starting from 1, 0 means not chosen
-	connMap        map[*Person]float32 // map of the total connections (including from others) for each person
-	dirty          bool                // whether we need to render
+	People             []Person
+	pageIndex          int
+	personDragged      int // index of person being dragged, -1 if none
+	dragOffsetX        float32
+	dragOffsetY        float32
+	connStartIndex     int                 // index of person where connection is starting, -1 if not connecting
+	connStrength       int                 // stored starting from 1, 0 means not chosen
+	connMap            map[*Person]float32 // map of the total connections (including from others) for each person
+	dirty              bool                // whether we need to render
+	colorMode          ColorMode
+	switchingColorMode bool
 }
 
 func NewWindow(people []Person) *Window {
@@ -55,6 +79,7 @@ func NewWindow(people []Person) *Window {
 		connStartIndex: -1,
 		connMap:        initConnMap(people),
 		dirty:          true,
+		colorMode:      Default,
 	}
 }
 
@@ -163,6 +188,32 @@ func (w *Window) Update() error {
 		}
 	}
 
+	// switching color modes
+	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+		cx, cy := ebiten.CursorPosition()
+		_modeTextW, _modeTextH := text.Measure(w.colorMode.String(), textFace16, 3)
+		modeTextW, modeTextH := float32(_modeTextW), float32(_modeTextH)
+		// +10 padding, +10 trangle
+		if PointInRect(cx, cy, 0, 25, modeTextW+10+10, modeTextH) {
+			w.dirty = true
+			w.switchingColorMode = !w.switchingColorMode
+		} else {
+			pos := float32(0)
+			for i := range NumColorModes {
+				if i == w.colorMode {
+					continue
+				}
+				pos++
+				if PointInRect(cx, cy, 0, 25+pos*modeTextH, modeTextW+10+10, modeTextH) {
+					w.dirty = true
+					w.colorMode = i
+					w.switchingColorMode = false
+					break
+				}
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -211,7 +262,7 @@ func (w *Window) Draw(screen *ebiten.Image) {
 			cx := swatchWidth(int(sx), i)
 			cy := sy
 			// draw small rect
-			FillRoundedRect(screen, cx, cy, 20, 20, 4, col)
+			DrawRoundedRect(screen, cx, cy, 20, 20, 4, col)
 		}
 	}
 
@@ -223,6 +274,22 @@ func (w *Window) Draw(screen *ebiten.Image) {
 			vector.FillRect(screen, x+1, 2+1, 18, 18, color.RGBA{0x0, 0xFF, 0xFF, 0x88}, true)
 		}
 		DrawText(screen, strconv.Itoa(i), float64(x)+5, 1, textFace16, color.Black)
+	}
+
+	// draw color mode selector
+	modeTextW, modeTextH := text.Measure(w.colorMode.String(), textFace16, 3)
+	vector.FillRect(screen, 0, 25, float32(modeTextW)+10+10, float32(modeTextH), color.RGBA{60, 200, 10, 180}, false)
+	DrawTriangle(screen, float32(modeTextW)+10, 25+float32(modeTextH)/2, 10, color.Black)
+	DrawText(screen, w.colorMode.String(), 0, 25, textFace16, color.Black)
+	if w.switchingColorMode {
+		pos := 0.0
+		for i := range NumColorModes {
+			if i == w.colorMode {
+				continue
+			}
+			pos++
+			DrawText(screen, ColorMode(i).String(), 0, 25+pos*modeTextH, textFace16, color.Black)
+		}
 	}
 }
 
