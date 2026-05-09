@@ -19,6 +19,7 @@ func main() {
 	ebiten.SetWindowTitle("Circle")
 	ebiten.SetWindowSize(WIDTH, HEIGHT)
 	ebiten.SetVsyncEnabled(true)
+	ebiten.SetScreenClearedEveryFrame(false)
 
 	pagePeopleCount = len(people)
 	if err := ebiten.RunGame(NewWindow(people)); err != nil {

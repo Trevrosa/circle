@@ -38,6 +38,7 @@ type Window struct {
 	connStartIndex int                 // index of person where connection is starting, -1 if not connecting
 	connStrength   int                 // stored starting from 1
 	connMap        map[*Person]float32 // map of the total connections (including from others) for each person
+	dirty          bool                // whether we need to render
 }
 
 func NewWindow(people []Person) *Window {
@@ -47,6 +48,7 @@ func NewWindow(people []Person) *Window {
 		draggingIndex:  -1,
 		connStartIndex: -1,
 		connMap:        initConnMap(people),
+		dirty:          true,
 	}
 }
 
@@ -67,6 +69,8 @@ func (w *Window) personPosition(i int) *[2]float32 {
 }
 
 func (w *Window) connect(p *Person, other *Person) {
+	w.dirty = true
+
 	strength := w.connStrength
 	p.connect(other, strength)
 	w.connMap[p] += strengthValue(strength)
@@ -74,6 +78,8 @@ func (w *Window) connect(p *Person, other *Person) {
 }
 
 func (w *Window) unconnect(p *Person, other *Person) {
+	w.dirty = true
+
 	strength := 100 // colorStrength will return 0
 	for _, c := range p.Connections {
 		if c.Person == other {
@@ -90,6 +96,7 @@ func (w *Window) Update() error {
 	// move randomly if at 0,0
 	for i := range w.People {
 		if *w.personPosition(i) == [2]float32{0, 0} {
+			w.dirty = true
 			*w.personPosition(i) = [2]float32{
 				float32(rand.Intn(WIDTH - 100)),
 				float32(rand.Intn(HEIGHT - 60)),
@@ -103,6 +110,7 @@ func (w *Window) Update() error {
 		for i := range w.People {
 			x, y, width, height := w.personRect(&w.People[i])
 			if pointInRect(float32(cursorX), float32(cursorY), x, y, width, height) {
+				w.dirty = true
 				w.draggingIndex = i
 				w.dragOffsetX = float32(cursorX) - x
 				w.dragOffsetY = float32(cursorY) - y
@@ -112,6 +120,7 @@ func (w *Window) Update() error {
 	}
 	if w.draggingIndex >= 0 {
 		if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
+			w.dirty = true
 			cursorX, cursorY := ebiten.CursorPosition()
 			*w.personPosition(w.draggingIndex) = [2]float32{
 				float32(cursorX) - w.dragOffsetX,
@@ -134,6 +143,7 @@ func (w *Window) Update() error {
 				swX := swatchWidth(int(sx), si)
 				swY := sy
 				if pointInRect(float32(cursorX), float32(cursorY), swX, swY, 20, 20) {
+					w.dirty = true
 					w.connStrength = si + 1
 					break
 				}
@@ -145,9 +155,10 @@ func (w *Window) Update() error {
 					x, y, width, height := w.personRect(&w.People[i])
 					if pointInRect(float32(cursorX), float32(cursorY), x, y, width, height) {
 						w.connStartIndex = i
-						return nil
+						break
 					}
 				}
+				w.dirty = true
 				w.connStartIndex = -1
 			}
 			return nil
@@ -161,6 +172,7 @@ func (w *Window) Update() error {
 					if i != w.connStartIndex {
 						person := &w.People[w.connStartIndex]
 						other := &w.People[i]
+						// dirty is set by the connect/unconnect functions
 						// delete connection if already connected
 						if person.isConnectedTo(other) {
 							w.unconnect(person, other)
@@ -174,6 +186,7 @@ func (w *Window) Update() error {
 					return nil
 				}
 			}
+
 			// clicked outside, cancel
 			w.connStartIndex = -1
 			w.connStrength = 0
@@ -186,7 +199,7 @@ func (w *Window) Update() error {
 			if pointInRect(float32(cursorX), float32(cursorY), x, y, width, height) {
 				w.connStartIndex = i
 				w.connStrength = 0
-				return nil
+				break
 			}
 		}
 	}
@@ -197,6 +210,7 @@ func (w *Window) Update() error {
 		for i := range PAGES {
 			x, y, wi, h := i*20+2, 2+1, 18, 18
 			if pointInRect(float32(cx), float32(cy), float32(x), float32(y), float32(wi), float32(h)) {
+				w.dirty = true
 				w.pageIndex = i
 
 				for i := range w.People {
@@ -236,6 +250,11 @@ func (w *Window) personRect(person *Person) (x, y, width, height float32) {
 }
 
 func (w *Window) Draw(screen *ebiten.Image) {
+	if !w.dirty {
+		return
+	}
+	w.dirty = false
+
 	screen.Fill(color.White)
 
 	// draw people rects
