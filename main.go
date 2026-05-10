@@ -21,7 +21,6 @@ func main() {
 	ebiten.SetVsyncEnabled(true)
 	ebiten.SetScreenClearedEveryFrame(false)
 
-	pagePeopleCount = len(people)
 	if err := ebiten.RunGame(NewWindow(people)); err != nil {
 		log.Fatal(err)
 	}

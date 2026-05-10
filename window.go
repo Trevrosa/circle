@@ -72,6 +72,7 @@ type Window struct {
 }
 
 func NewWindow(people []Person) *Window {
+	pagePeopleCount = len(people)
 	Init()
 	return &Window{
 		People:         people,
