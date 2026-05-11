@@ -33,12 +33,10 @@ func DrawRoundedRect(dst *ebiten.Image, x, y, width, height, radius float32, fil
 	// top left
 	path.QuadTo(x, y, x+radius, y)
 
-	// light grey fill
 	fillOptions := vector.DrawPathOptions{AntiAlias: false}
 	fillOptions.ColorScale.ScaleWithColor(fill)
 	vector.FillPath(dst, path, nil, &fillOptions)
 
-	// darker grey stroke
 	strokeOptions := vector.StrokeOptions{Width: 2}
 	strokeDrawOptions := vector.DrawPathOptions{AntiAlias: true}
 	strokeDrawOptions.ColorScale.ScaleWithColor(color.RGBA{100, 100, 100, 255})

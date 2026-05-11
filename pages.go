@@ -41,6 +41,6 @@ func page2(person *Person, i int) [2]float32 {
 	return [2]float32{float32(x), float32(y)}
 }
 
-func fromPage0(person *Person, i int) [2]float32 {
+func fromPage0(person *Person, _ int) [2]float32 {
 	return person.Positions[0]
 }

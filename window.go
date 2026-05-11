@@ -198,7 +198,7 @@ func (w *Window) Update() error {
 		if PointInRect(cx, cy, 0, 25, modeTextW+10+10, modeTextH) {
 			w.dirty = true
 			w.switchingColorMode = !w.switchingColorMode
-		} else {
+		} else if w.switchingColorMode {
 			pos := float32(0)
 			for i := range NumColorModes {
 				if i == w.colorMode {
