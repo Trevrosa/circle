@@ -38,8 +38,10 @@ func getInitial() (string, error) {
 }
 
 func platformSetup(people []Person) {
-	closeHandler := js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		if err := savePeople(people); err != nil {
+	closeHandler := js.FuncOf(func(this js.Value, args []js.Value) any {
+		if js.Global().Get("clearSave").Bool() {
+			js.Global().Get("localStorage").Call("removeItem", "people")
+		} else if err := savePeople(people); err != nil {
 			fmt.Printf("Error saving people: %v", err)
 		}
 		return nil

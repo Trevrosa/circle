@@ -8,7 +8,12 @@
 </head>
 
 <body>
-    <iframe src="game.html" width="1300" height="800"></iframe>
+    <iframe id="game" src="game.html" width="1300" height="800"></iframe>
+    <script>
+        function clearSave() {
+            document.getElementById("game").contentWindow.clearSave = true;
+        }
+    </script>
 </body>
 
 </html>
