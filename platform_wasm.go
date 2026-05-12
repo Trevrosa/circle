@@ -9,6 +9,8 @@ import (
 	"syscall/js"
 )
 
+const compactSave = true
+
 func save(data []byte) error {
 	js.Global().Get("localStorage").Call("setItem", "people", string(data))
 	return nil

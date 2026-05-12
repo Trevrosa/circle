@@ -2,9 +2,9 @@
 
 package main
 
-import (
-	"os"
-)
+import "os"
+
+const compactSave = false
 
 func save(data []byte) error {
 	return os.WriteFile("people.json", data, 0644)

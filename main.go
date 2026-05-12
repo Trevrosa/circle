@@ -39,10 +39,18 @@ func savePeople(people []Person) error {
 	for i, p := range people {
 		toSave[i] = p.toSaved()
 	}
-	data, err := json.MarshalIndent(toSave, "", "  ")
+
+	var data []byte
+	var err error
+	if compactSave {
+		data, err = json.Marshal(toSave)
+	} else {
+		data, err = json.MarshalIndent(toSave, "", "  ")
+	}
 	if err != nil {
 		return err
 	}
+
 	fmt.Printf("saved %v bytes", len(data))
 	return save(data)
 }
