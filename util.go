@@ -44,14 +44,7 @@ func DrawRoundedRect(dst *ebiten.Image, x, y, width, height, radius float32, fil
 }
 
 func DrawArrow(dst *ebiten.Image, sx, sy, ex, ey float32, col color.Color) {
-	// draw line
-	p := &vector.Path{}
-	p.MoveTo(sx, sy)
-	p.LineTo(ex, ey)
-	stroke := vector.StrokeOptions{Width: 3}
-	opt := vector.DrawPathOptions{AntiAlias: true}
-	opt.ColorScale.ScaleWithColor(col)
-	vector.StrokePath(dst, p, &stroke, &opt)
+	vector.StrokeLine(dst, sx, sy, ex, ey, 3, col, true)
 
 	// arrowhead
 	ax := float64(ex)
@@ -70,7 +63,6 @@ func DrawArrow(dst *ebiten.Image, sx, sy, ex, ey float32, col color.Color) {
 	ph.MoveTo(float32(ax), float32(ay))
 	ph.LineTo(float32(leftX), float32(leftY))
 	ph.LineTo(float32(rightX), float32(rightY))
-	ph.Close()
 
 	opt2 := vector.DrawPathOptions{AntiAlias: true}
 	opt2.ColorScale.ScaleWithColor(col)

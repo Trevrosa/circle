@@ -69,6 +69,8 @@ type Window struct {
 	dirty              bool                // whether we need to render
 	colorMode          ColorMode
 	switchingColorMode bool
+
+	arrowImage *ebiten.Image
 }
 
 func NewWindow(people []Person) *Window {
@@ -81,6 +83,7 @@ func NewWindow(people []Person) *Window {
 		connMap:        initConnMap(people),
 		dirty:          true,
 		colorMode:      Default,
+		arrowImage:     ebiten.NewImage(WIDTH, HEIGHT),
 	}
 }
 
@@ -251,8 +254,12 @@ func (w *Window) Draw(screen *ebiten.Image) {
 	}
 
 	// draw connection arrows on top of rects
+	w.arrowImage.Clear()
 	for i := range w.People {
-		w.drawConnections(screen, i)
+		w.drawConnections(w.arrowImage, i)
+		opt := &ebiten.DrawImageOptions{}
+		opt.Filter = ebiten.FilterLinear
+		screen.DrawImage(w.arrowImage, opt)
 	}
 
 	// draw swatches if choosing a connection strength
