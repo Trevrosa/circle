@@ -70,12 +70,16 @@ type Window struct {
 	colorMode          ColorMode
 	switchingColorMode bool
 
-	arrowImage *ebiten.Image
+	personRects map[*Person]personRectInfo
+	solid       *ebiten.Image
+	offscreen   *ebiten.Image
 }
 
 func NewWindow(people []Person) *Window {
-	pagePeopleCount = len(people)
+	peopleCount = len(people)
 	Init()
+	solid := ebiten.NewImage(1, 1)
+	solid.Fill(color.White)
 	return &Window{
 		People:         people,
 		personDragged:  -1,
@@ -83,7 +87,9 @@ func NewWindow(people []Person) *Window {
 		connMap:        initConnMap(people),
 		dirty:          true,
 		colorMode:      Default,
-		arrowImage:     ebiten.NewImage(WIDTH, HEIGHT),
+		solid:          solid,
+		offscreen:      ebiten.NewImage(WIDTH, HEIGHT),
+		personRects:    make(map[*Person]personRectInfo, len(people)),
 	}
 }
 
@@ -246,21 +252,29 @@ func (w *Window) Draw(screen *ebiten.Image) {
 	}
 	w.dirty = false
 
+	w.offscreen.Clear()
 	screen.Fill(color.White)
 
 	// draw people rects
 	for i := range w.People {
-		w.drawPerson(screen, i)
+		x, y, width, height := w.personRect(&w.People[i])
+		w.personRects[&w.People[i]] = personRectInfo{
+			x:          x,
+			y:          y,
+			width:      width,
+			height:     height,
+			centerX:    x + width/2,
+			centerY:    y + height/2,
+			halfWidth:  width / 2,
+			halfHeight: height / 2,
+		}
+		w.drawPerson(w.offscreen, i)
 	}
 
 	// draw connection arrows on top of rects
-	w.arrowImage.Clear()
-	for i := range w.People {
-		w.drawConnections(w.arrowImage, i)
-		opt := &ebiten.DrawImageOptions{}
-		opt.Filter = ebiten.FilterLinear
-		screen.DrawImage(w.arrowImage, opt)
-	}
+	w.drawConnections(w.offscreen)
+
+	screen.DrawImage(w.offscreen, nil)
 
 	// draw swatches if choosing a connection strength
 	if w.connStartIndex >= 0 && w.connStrength == 0 {

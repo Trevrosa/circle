@@ -33,7 +33,7 @@ func DrawRoundedRect(dst *ebiten.Image, x, y, width, height, radius float32, fil
 	// top left
 	path.QuadTo(x, y, x+radius, y)
 
-	fillOptions := vector.DrawPathOptions{AntiAlias: false}
+	fillOptions := vector.DrawPathOptions{}
 	fillOptions.ColorScale.ScaleWithColor(fill)
 	vector.FillPath(dst, path, nil, &fillOptions)
 
@@ -41,32 +41,6 @@ func DrawRoundedRect(dst *ebiten.Image, x, y, width, height, radius float32, fil
 	strokeDrawOptions := vector.DrawPathOptions{AntiAlias: true}
 	strokeDrawOptions.ColorScale.ScaleWithColor(color.RGBA{100, 100, 100, 255})
 	vector.StrokePath(dst, path, &strokeOptions, &strokeDrawOptions)
-}
-
-func DrawArrow(dst *ebiten.Image, sx, sy, ex, ey float32, col color.Color) {
-	vector.StrokeLine(dst, sx, sy, ex, ey, 3, col, true)
-
-	// arrowhead
-	ax := float64(ex)
-	ay := float64(ey)
-	angle := math.Atan2(float64(ey-sy), float64(ex-sx))
-	size := 10.0
-	// two base points
-	bx := ax - math.Cos(angle)*size
-	by := ay - math.Sin(angle)*size
-	leftX := bx + math.Sin(angle)*size*0.5
-	leftY := by - math.Cos(angle)*size*0.5
-	rightX := bx - math.Sin(angle)*size*0.5
-	rightY := by + math.Cos(angle)*size*0.5
-
-	ph := &vector.Path{}
-	ph.MoveTo(float32(ax), float32(ay))
-	ph.LineTo(float32(leftX), float32(leftY))
-	ph.LineTo(float32(rightX), float32(rightY))
-
-	opt2 := vector.DrawPathOptions{AntiAlias: true}
-	opt2.ColorScale.ScaleWithColor(col)
-	vector.FillPath(dst, ph, nil, &opt2)
 }
 
 // equilateral triangle pointing down with center at (x, y)

@@ -8,10 +8,10 @@ var PAGES = [](func(*Person, int) [2]float32){
 	page2,
 }
 
-var pagePeopleCount int = 0
+var peopleCount int = 0
 
 func page1(person *Person, i int) [2]float32 {
-	n := pagePeopleCount
+	n := peopleCount
 	centerX := float64(WIDTH) / 2
 	centerY := float64(HEIGHT) / 2
 	radius := math.Min(float64(WIDTH), float64(HEIGHT)) * 0.399
@@ -23,7 +23,7 @@ func page1(person *Person, i int) [2]float32 {
 }
 
 func page2(person *Person, i int) [2]float32 {
-	n := pagePeopleCount
+	n := peopleCount
 	centerX := float64(WIDTH) / 2
 	centerY := float64(HEIGHT) / 2
 
